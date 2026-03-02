@@ -33,22 +33,24 @@ bool listContains(std::vector<T> &list, T item){
     return contains;
 }
 
-struct Ground{
+struct Cave{
     int height = 40;
 };
 
 struct Pipes{
-    int x;
-    int y;
-    int gap;
-    int speed;
+    int x; //centre of pipes
+    int y; //height of directly inbetween pipes
+    int gap; //distance from centre of gap to pipe
+    int width; //entire width
+    float speed;
     int index;
     std::mt19937 generator;
     std::uniform_int_distribution<int> dist;
 
-    Pipes(int speed, int gap, int index){
-        x = 500 * index;
+    Pipes(float speed, int gap, int width, int index){
+        x = 520 * index;
         this->gap = gap;
+        this->width = width;
         this->index = index;
         this->speed = speed;
         std::random_device rd;
@@ -105,7 +107,7 @@ struct Bird{
     }
 };
 
-void update(bool* playing, std::vector<SDL_Keycode> &keys, Bird *bird){
+void update(bool* playing, std::vector<SDL_Keycode> &keys, Bird *bird, std::array<Pipes,2> &pipe_arr){
     if (*playing){
         bird->jump(keys);
     } else {
@@ -115,7 +117,7 @@ void update(bool* playing, std::vector<SDL_Keycode> &keys, Bird *bird){
     }
 }
 
-void draw(SDL_Renderer *renderer, Bird *bird){
+void draw(SDL_Renderer *renderer, Bird *bird, std::array<Pipes,2> &pipe_arr){
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
 
@@ -140,6 +142,7 @@ int main(){
     bool* playing = new bool(false);
 
     Bird* bird = new Bird();
+    std::array<Pipes,2> pipes_arr = {Pipes(2.8f,100,100,1),Pipes(2.8f,100,100,2)};
 
     window = SDL_CreateWindow(
         "An SDL3 window",                  // title
@@ -178,13 +181,15 @@ int main(){
             done = true;
         }
 
-        update(playing, keys, bird);
-        draw(renderer, bird);
+        update(playing, keys, bird, pipes_arr);
+        draw(renderer, bird, pipes_arr);
 
         SDL_UpdateWindowSurface(window);
 
         end = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch());
         duration = end - start;
+        std::cout << "d" << duration.count() << std::endl;
+        std::cout << "t" << frametime.count() << std::endl;
         if (frametime>duration){
             std::this_thread::sleep_for(frametime-duration);
         }
