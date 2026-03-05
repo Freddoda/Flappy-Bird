@@ -40,7 +40,67 @@ bool listContains(std::vector<T> &list, T item){
 }
 
 struct Cave{
-    int height = 40;
+    int height;
+    std::mt19937 generator;
+    std::vector<std::array<int,4>> rocks;
+    std::uniform_int_distribution<> rockAmount;
+    std::uniform_int_distribution<> rockSize;
+    std::uniform_int_distribution<> rockX;
+    std::uniform_int_distribution<> rockY;
+    int amountRocks;
+    float offset;
+    float increment;
+
+
+    Cave(float increment){
+        height=40;
+        std::uniform_int_distribution<> rockAmount(2,8);
+        this->rockAmount = rockAmount;
+        std::uniform_int_distribution<> rockSize(10,180);
+        this->rockSize = rockSize;
+        std::uniform_int_distribution<> rockX(-30,650);
+        this->rockX = rockX;
+        std::uniform_int_distribution<> rockY(-30,950);
+        this->rockY = rockY;
+        std::random_device rd;
+        std::mt19937 generator(rd());
+        this->generator = generator;
+        amountRocks= this->rockAmount(this->generator);
+        for (int i=0; i<amountRocks; i++){
+            rocks.push_back({this->rockX(this->generator),this->rockY(this->generator),this->rockSize(this->generator),this->rockSize(this->generator)});
+        }
+        offset = 0;
+        this->increment = increment;
+    }
+
+    void move(){
+        offset += increment;
+        if (offset>640){
+            offset-=640;
+        }
+    }
+
+    void reset(){
+        rocks.clear();
+        amountRocks = rockAmount(generator);
+        for (int i=0; i<amountRocks; i++){
+            rocks.push_back({rockX(generator),rockY(generator),rockSize(generator),rockSize(generator)});
+        }
+        offset = 0;
+    }
+
+    void floorceildraw(SDL_Renderer* renderer){
+        renderRect(renderer, {0,0}, {640,static_cast<float>(height)}, {30,30,30});
+        renderRect(renderer, {0,static_cast<float>(940-height)}, {640,static_cast<float>(height)}, {30,30,30});
+    }
+
+    void backdraw(SDL_Renderer* renderer){
+        for (std::array<int,4> rock: rocks){
+            renderRect(renderer, {rock[0] - offset - 640, static_cast<float>(rock[1])}, {static_cast<float>(rock[2]), static_cast<float>(rock[3])}, {20,20,20});
+            renderRect(renderer, {rock[0] - offset, static_cast<float>(rock[1])}, {static_cast<float>(rock[2]), static_cast<float>(rock[3])}, {20,20,20});
+            renderRect(renderer, {rock[0] - offset + 640, static_cast<float>(rock[1])}, {static_cast<float>(rock[2]), static_cast<float>(rock[3])}, {20,20,20});
+        }
+    }
 };
 
 struct Pipes{
@@ -51,7 +111,7 @@ struct Pipes{
     float speed;
     int index;
     std::mt19937 generator;
-    std::uniform_int_distribution<int> dist;
+    std::uniform_int_distribution<> dist;
 
     Pipes(float speed, int gap, int width, int index){
         x = 520 * index;
@@ -62,7 +122,7 @@ struct Pipes{
         std::random_device rd;
         std::mt19937 generator(rd());
         this->generator = generator;
-        std::uniform_int_distribution<int> dist(gap+45,940-gap-45);
+        std::uniform_int_distribution<> dist(gap+45,940-gap-45);
         this->dist=dist;
         y = this->dist(this->generator);
     }
@@ -70,18 +130,20 @@ struct Pipes{
     void reset(){
         x = 500 * index;
         y = dist(generator);
+        std::cout<<y<<'\n';
     }
 
     void move(){
         x-=speed;
         if (x<=-width/2){
             x+=520*2;
+            y = dist(generator);
         }
     }
 
     void draw(SDL_Renderer *renderer){
-        renderRect(renderer,{x-width/2,0},{(float)width,(float)(y-gap)},{0,155,0});
-        renderRect(renderer,{x-width/2,(float)(y+gap)},{(float)width,(float)(940-y-gap)},{0,155,0});
+        renderRect(renderer,{x-width/2,0},{static_cast<float>(width),static_cast<float>(y-gap)},{0,100,0});
+        renderRect(renderer,{x-width/2,static_cast<float>(y+gap)},{static_cast<float>(width),static_cast<float>(940-y-gap)},{0,100,0});
     }
 };
 
@@ -91,17 +153,19 @@ struct Bird{
     int rad;
     float ysp;
     int jtimer;
+    Cave* cave;
 
-    Bird(){
+    Bird(Cave* cave){
         this->x=200;
         this->y=400;
         this->rad=25;
         this->ysp=0;
         this->jtimer=0;
+        this->cave = cave;
     }
 
     void draw(SDL_Renderer* renderer){
-        renderCircle(renderer,x,y,rad,{255,255,0});
+        renderCircle(renderer,x,y,rad,{150,150,0});
     }
 
     void jump(std::vector<SDL_Keycode> &keys){
@@ -126,6 +190,9 @@ struct Bird{
 
     bool collision(std::array<Pipes,2> &pipes){
         bool collide = false;
+        if (y-rad<cave->height || y+rad>940-cave->height) {
+            collide = true;
+        } else{
             for (Pipes &pipe : pipes){
                 if (pipe.x-pipe.width/2<x && pipe.x+pipe.width/2>x &&
                     !(pipe.y+pipe.gap>y+rad && pipe.y-pipe.gap<y-rad)){
@@ -145,6 +212,7 @@ struct Bird{
                     }
                 }
             }
+        }
         return collide;
     }
 
@@ -173,15 +241,17 @@ struct Bird{
     }
 };
 
-void update(bool* playing, bool* playable, std::vector<SDL_Keycode> &keys, Bird *bird, std::array<Pipes,2> &pipe_arr){
+void update(bool* playing, bool* playable, std::vector<SDL_Keycode> &keys, Bird *bird, std::array<Pipes,2> &pipe_arr, Cave* cave){
     if (*playing){
         bird->jump(keys);
+        cave->move();
         for (Pipes &pipe : pipe_arr){
             pipe.move();
         }
         if (bird->collision(pipe_arr)){
             *playing = false;
             bird->reset();
+            cave->reset();
             for (Pipes &pipe : pipe_arr){
                 pipe.reset();
             }
@@ -198,14 +268,16 @@ void update(bool* playing, bool* playable, std::vector<SDL_Keycode> &keys, Bird 
     }
 }
 
-void draw(SDL_Renderer *renderer, Bird *bird, std::array<Pipes,2> &pipe_arr){
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+void draw(SDL_Renderer *renderer, Bird *bird, std::array<Pipes,2> &pipe_arr, Cave* cave){
+    SDL_SetRenderDrawColor(renderer, 10, 10, 10, 255);
     SDL_RenderClear(renderer);
 
+    cave->backdraw(renderer);
     bird->draw(renderer);
     for (Pipes pipe : pipe_arr){
             pipe.draw(renderer);
-        }
+    }
+    cave->floorceildraw(renderer);
 
     /*
     SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
@@ -237,11 +309,12 @@ int main(){
     bool* playing = new bool(false);
     bool* playable = new bool(true);
 
-    Bird* bird = new Bird();
+    Cave* cave = new Cave(2.8f);
+    Bird* bird = new Bird(cave);
     std::array<Pipes,2> pipes_arr = {Pipes(2.8f,100,100,1),Pipes(2.8f,100,100,2)};
 
     window = SDL_CreateWindow(
-        "Flappy Bird",                     // title
+        "Flappy Bird",                  // title
         640,                               // width
         940,                               // height
         SDL_WINDOW_OPENGL                  // flags
@@ -277,15 +350,15 @@ int main(){
             done = true;
         }
 
-        update(playing, playable, keys, bird, pipes_arr);
-        draw(renderer, bird, pipes_arr);
+        update(playing, playable, keys, bird, pipes_arr, cave);
+        draw(renderer, bird, pipes_arr, cave);
 
         SDL_UpdateWindowSurface(window);
 
         end = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch());
         duration = end - start;
-        std::cout << "d" << duration.count() << std::endl;
-        std::cout << "t" << frametime.count() << std::endl;
+        //std::cout << "d" << duration.count() << std::endl;
+        //std::cout << "t" << frametime.count() << std::endl;
         if (frametime>duration){
             std::this_thread::sleep_for(frametime-duration);
         }
@@ -298,6 +371,7 @@ int main(){
     delete playing;
     delete playable;
     delete bird;
+    delete cave;
 
     // Clean up
     SDL_Quit();
