@@ -1,5 +1,5 @@
-# Flappy-Bird-Cpp
-Flappy bird in c++ with sdl3;
-SDL3 is a required dependency;
-Cmake file has been added for your convenience;
-Still in active development;
+# Flappy-Bird
+Various flappy birds I've made;
+SDL3 for cpp version;
+pygame for python version;
+no dependencies for Java;
