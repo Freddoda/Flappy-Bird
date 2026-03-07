@@ -390,7 +390,14 @@ int main(){
     Bird* bird = new Bird(cave);
     std::array<Pipes,2> pipes_arr = {Pipes(2.8f,100,100,1),Pipes(2.8f,100,100,2)};
     Score* score = new Score(bird, &pipes_arr, "Score.txt");
-    TTF_Font* font = TTF_OpenFont("Geneva.ttf",60);
+    
+    const char* base_path = SDL_GetBasePath(); 
+    std::string font_path = std::string(base_path) + "Geneva.ttf";
+    TTF_Font* font = TTF_OpenFont(font_path.c_str(), 60);
+    if (font == NULL){
+        std::cout<<SDL_GetError();
+    }
+    delete base_path;
 
     window = SDL_CreateWindow(
         "Flappy Bird",                  // title
