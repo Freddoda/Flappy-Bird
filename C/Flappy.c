@@ -3,6 +3,23 @@
 #include<SDL3_ttf/SDL_ttf.h>
 #include<stdlib.h>
 #include<time.h>
+#include<math.h>
+
+typedef struct {
+    int num;
+    int x;
+    int y;
+    int gap; //from centre y
+    int width; //from centre x
+} Pipe;
+
+typedef struct {
+    int x;
+    float y;
+    int rad;
+    float ysp;
+    int jtimer;
+} Bird;
 
 struct timespec timespec_subtract(struct timespec* a, struct timespec* b){
     struct timespec result = {0};
@@ -36,23 +53,63 @@ void renderRect(SDL_Renderer* renderer, int x, int y, int w, int h, Colour colou
     free(rect);
 }
 
-typedef struct {
-    int num;
-    int x;
-    int y;
-    int gap; //from centre y
-    int width; //from centre x
-} Pipe;
-
 Pipe* newPipe(int num, int gap, int width){
     Pipe* pipe = malloc(sizeof(Pipe));
     *pipe = (Pipe) {num, 520*num, (rand()%(940-2*gap))+gap, gap, width};
     return pipe;
 }
 
+void Pipe_reset(Pipe* pipe){
+    pipe->x = 520*pipe->num;
+    pipe->y = (rand()%(940-2*pipe->gap))+pipe->gap;
+}
+
 void drawPipe(Pipe* pipe, SDL_Renderer* renderer){
     renderRect(renderer, pipe->x-pipe->width, 0, 2*pipe->width, pipe->y-pipe->gap, (Colour) {0,255,0});
     renderRect(renderer, pipe->x-pipe->width, pipe->y+pipe->gap, 2*pipe->width, 940-(pipe->y+pipe->gap), (Colour) {0,255,0});
+}
+
+void Pipe_move(Pipe* pipe, int incr){
+    pipe->x-=incr;
+    if (pipe->x+pipe->width<0){
+        pipe->x+=1040;
+        pipe->y = (rand()%(940-2*pipe->gap))+pipe->gap;
+    }
+}
+
+bool Pipe_collide(Pipe* pipe, Bird* bird){
+    if (!(bird->rad+pipe->width>abs(bird->x-pipe->x))){
+        return false;
+    }
+    if ((pipe->gap-bird->rad>fabsf(bird->y-pipe->y))){
+            return false;
+    }
+
+    if (!(pipe->gap-bird->rad>fabsf(bird->y-pipe->y))){
+        if ((pipe->width>abs(bird->x-pipe->x))){
+        return true;
+        }
+    }
+    if (bird->rad+pipe->width>abs(bird->x-pipe->x)){
+        if (!(pipe->gap>fabsf(bird->y-pipe->y))){
+            return true;
+        }
+    }
+
+    if (pow(pipe->x-pipe->width-bird->x,2) + pow(pipe->y-pipe->gap-bird->y,2) < pow(bird->rad,2)){
+        return true;
+    }
+    if (pow(pipe->x+pipe->width-bird->x,2) + pow(pipe->y-pipe->gap-bird->y,2) < pow(bird->rad,2)){
+        return true;
+    }
+    if (pow(pipe->x-pipe->width-bird->x,2) + pow(pipe->y+pipe->gap-bird->y,2) < pow(bird->rad,2)){
+        return true;
+    }
+    if (pow(pipe->x+pipe->width-bird->x,2) + pow(pipe->y+pipe->gap-bird->y,2) < pow(bird->rad,2)){
+        return true;
+    }
+
+    return false;
 }
 
 typedef struct {
@@ -72,8 +129,13 @@ void drawPipes(Pipes* pipes, SDL_Renderer* renderer){
 }
 
 void resetPipes(Pipes* pipes){
-    pipes->pipe1->x=pipes->pipe1->num*520;
-    pipes->pipe2->x=pipes->pipe2->num*520;
+    Pipe_reset(pipes->pipe1);
+    Pipe_reset(pipes->pipe2);
+}
+
+void movePipes(Pipes* pipes, int incr){
+    Pipe_move(pipes->pipe1, incr);
+    Pipe_move(pipes->pipe2, incr);
 }
 
 void DestroyPipes(Pipes* pipes){
@@ -81,14 +143,6 @@ void DestroyPipes(Pipes* pipes){
     free(pipes->pipe2);
     free(pipes);
 }
-
-typedef struct {
-    int x;
-    float y;
-    int rad;
-    float ysp;
-    int jtimer;
-} Bird;
 
 Bird* newBird(){
     Bird* b = malloc(sizeof(Bird));
@@ -115,10 +169,15 @@ void bird_jump(Bird* bird, const bool* keys){
     bird->y += bird->ysp;
 }
 
-bool bird_collide(Bird* bird){
+bool bird_collide(Bird* bird, Pipes* pipes){
     if (bird->y-bird->rad<0 || bird->y+bird->rad>940){
         return true;
     }
+
+    if (Pipe_collide(pipes->pipe1, bird) || Pipe_collide(pipes->pipe2, bird)){
+        return true;
+    }
+
     return false;
 }
 
@@ -135,7 +194,8 @@ void bird_draw(Bird* bird, SDL_Renderer* renderer){
 void update(const bool* keys, bool* playing, bool* playstart, Bird* bird, Pipes* pipes){
     if (*playing){
         bird_jump(bird,keys);
-        if (bird_collide(bird)){
+        movePipes(pipes, 3);
+        if (bird_collide(bird, pipes)){
             *playing = false;
             *playstart = false;
             bird_reset(bird);
@@ -185,7 +245,7 @@ int main(int argc, char* args[]){
     bool* playstartptr = malloc(sizeof(bool));
     *playptr = false;
     Bird* birdptr = newBird();
-    Pipes* pipesptr = newPipes(110,50);
+    Pipes* pipesptr = newPipes(102,50);
 
     window = SDL_CreateWindow(
         "Flappy Bird",                  // title
@@ -226,7 +286,7 @@ int main(int argc, char* args[]){
         //printf("%d\n",(int)span.tv_nsec);
         if (!(span.tv_sec>inter.tv_sec || span.tv_nsec>inter.tv_nsec)){
             wait = timespec_subtract(&inter,&span);
-            printf("%d\n",(int)wait.tv_nsec);
+            //printf("%d\n",(int)wait.tv_nsec);
             nanosleep(&wait,NULL);
         }
     }
