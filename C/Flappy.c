@@ -35,6 +35,8 @@ struct Score {
     char* highscoreF;
 };
 
+typedef struct { int r, g, b; } Colour;
+
 struct Score* newScore(TTF_TextEngine* engine){
     struct Score* score = malloc(sizeof(struct Score));
 
@@ -67,8 +69,58 @@ struct Score* newScore(TTF_TextEngine* engine){
     return score;
 }
 
+bool subscoring(Bird* bird, Pipe* pipe){
+    if (pipe->scored == true){
+        return false;
+    }
+    if (!(pipe->x+pipe->width<bird->x-bird->rad)){
+        return false;
+    }
+    pipe->scored=true;
+    return true;
+}
+
 void scoring(struct Score* score, Bird* bird, Pipes* pipes){
+    if (subscoring(bird, pipes->pipe1) || subscoring(bird, pipes->pipe2)){
+        score->score++;
+    }
+    if (score->score>score->highscore){
+        score->highscore=score->score;
+
+        char scoreString[16];
+        snprintf(scoreString, sizeof(scoreString), "%d", score->score);
+        FILE* file = fopen(score->highscoreF,"w");
+        fprintf(file, scoreString);
+        fclose(file);
+    }
+}
+
+void resetScore(struct Score* score){
+    score->score=0;
+}
+
+void Score_draw(struct Score* score){
+    char scoreString[16];
+    int* width = malloc(sizeof(int));
+    *width = 0;
+    int* height = malloc(sizeof(int));
+    *height = 0;
+
+    snprintf(scoreString, sizeof(scoreString), "%d", score->score);
+    TTF_Text* textobj = TTF_CreateText(score->engine, score->font, scoreString, 0);
+    TTF_GetTextSize(textobj, width, height);
+    TTF_SetTextColor(textobj, 200, 0, 0, 255);
+    TTF_DrawRendererText(textobj,320-(*width)/2,5);
+    TTF_DestroyText(textobj);
     
+    snprintf(scoreString, sizeof(scoreString), "%d", score->highscore);
+    TTF_Text* textobj2 = TTF_CreateText(score->engine, score->font, scoreString, 0);
+    TTF_SetTextColor(textobj2, 200, 0, 0, 255);
+    TTF_DrawRendererText(textobj2,320-(*width)/2,10+*height);
+    TTF_DestroyText(textobj2);
+    
+    free(width);
+    free(height);
 }
 
 void DestroyScore(struct Score* score){
@@ -87,8 +139,6 @@ struct timespec timespec_subtract(struct timespec* a, struct timespec* b){
     }
     return result;
 }
-
-typedef struct { int r, g, b; } Colour;
 
 void renderCircle(SDL_Renderer* renderer, int x, int y, int rad, Colour colour){
     SDL_SetRenderDrawColor(renderer, colour.r, colour.g, colour.b, 255);
@@ -244,15 +294,17 @@ void bird_draw(Bird* bird, SDL_Renderer* renderer){
     renderCircle(renderer, bird->x, bird->y, bird->rad, (Colour){255,255,0});
 }
 
-void update(const bool* keys, bool* playing, bool* playstart, Bird* bird, Pipes* pipes){
+void update(const bool* keys, bool* playing, bool* playstart, Bird* bird, Pipes* pipes, struct Score* score){
     if (*playing){
         bird_jump(bird,keys);
         movePipes(pipes, 3);
+        scoring(score,bird,pipes);
         if (bird_collide(bird, pipes)){
             *playing = false;
             *playstart = false;
             bird_reset(bird);
             resetPipes(pipes);
+            resetScore(score);
         }
     } else {
         if (keys[SDL_SCANCODE_W] || keys[SDL_SCANCODE_SPACE]){
@@ -265,12 +317,13 @@ void update(const bool* keys, bool* playing, bool* playstart, Bird* bird, Pipes*
     }
 }
 
-void draw(SDL_Renderer* renderer, Bird* bird, Pipes* pipes){
+void draw(SDL_Renderer* renderer, Bird* bird, Pipes* pipes, struct Score* score){
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
 
     bird_draw(bird, renderer);
     drawPipes(pipes, renderer);
+    Score_draw(score);
 
     SDL_RenderPresent(renderer);
 }
@@ -329,8 +382,8 @@ int main(int argc, char* args[]){
             done = true;
         }
 
-        update(keys, playptr, playstartptr, birdptr, pipesptr);
-        draw(renderer, birdptr, pipesptr);
+        update(keys, playptr, playstartptr, birdptr, pipesptr, scoreptr);
+        draw(renderer, birdptr, pipesptr, scoreptr);
 
         SDL_UpdateWindowSurface(window);
 
