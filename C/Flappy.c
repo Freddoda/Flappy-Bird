@@ -11,7 +11,13 @@ typedef struct {
     int y;
     int gap; //from centre y
     int width; //from centre x
+    bool scored;
 } Pipe;
+
+typedef struct {
+    Pipe* pipe1;
+    Pipe* pipe2;
+} Pipes;
 
 typedef struct {
     int x;
@@ -20,6 +26,56 @@ typedef struct {
     float ysp;
     int jtimer;
 } Bird;
+
+struct Score {
+    int score;
+    int highscore;
+    TTF_Font* font;
+    TTF_TextEngine* engine;
+    char* highscoreF;
+};
+
+struct Score* newScore(TTF_TextEngine* engine){
+    struct Score* score = malloc(sizeof(struct Score));
+
+    const char* base_path = SDL_GetBasePath(); 
+
+    char* font_path = malloc(100*sizeof(char));
+    strcpy(font_path, base_path);
+    strcat(font_path, "Geneva.ttf");
+    score->font = TTF_OpenFont(font_path, 60);
+    if (score->font == NULL){
+        printf("%d\n",SDL_GetError());
+    }
+    free(font_path);
+
+    score->highscoreF = malloc(100*sizeof(char));
+    strcpy(score->highscoreF, base_path);
+    strcat(score->highscoreF, "Score.txt");
+
+    free(base_path);
+
+    char highscore[50];
+    FILE* hsFileptr = fopen(score->highscoreF,"r");
+    fgets(highscore, 50, hsFileptr);
+    fclose(hsFileptr);
+    score->highscore = atoi(highscore);
+
+    score->score = 0;
+    score->engine = engine;
+
+    return score;
+}
+
+void scoring(struct Score* score, Bird* bird, Pipes* pipes){
+    
+}
+
+void DestroyScore(struct Score* score){
+    TTF_CloseFont(score->font);
+    free(score->highscoreF);
+    free(score);
+}
 
 struct timespec timespec_subtract(struct timespec* a, struct timespec* b){
     struct timespec result = {0};
@@ -55,13 +111,14 @@ void renderRect(SDL_Renderer* renderer, int x, int y, int w, int h, Colour colou
 
 Pipe* newPipe(int num, int gap, int width){
     Pipe* pipe = malloc(sizeof(Pipe));
-    *pipe = (Pipe) {num, 520*num, (rand()%(940-2*gap))+gap, gap, width};
+    *pipe = (Pipe) {num, 520*num, (rand()%(940-2*gap))+gap, gap, width, false};
     return pipe;
 }
 
 void Pipe_reset(Pipe* pipe){
     pipe->x = 520*pipe->num;
     pipe->y = (rand()%(940-2*pipe->gap))+pipe->gap;
+    pipe->scored = false;
 }
 
 void drawPipe(Pipe* pipe, SDL_Renderer* renderer){
@@ -74,6 +131,7 @@ void Pipe_move(Pipe* pipe, int incr){
     if (pipe->x+pipe->width<0){
         pipe->x+=1040;
         pipe->y = (rand()%(940-2*pipe->gap))+pipe->gap;
+        pipe->scored = false;
     }
 }
 
@@ -111,11 +169,6 @@ bool Pipe_collide(Pipe* pipe, Bird* bird){
 
     return false;
 }
-
-typedef struct {
-    Pipe* pipe1;
-    Pipe* pipe2;
-} Pipes;
 
 Pipes* newPipes(int gap, int width){
     Pipes* pipes = malloc(sizeof(Pipes));
@@ -232,6 +285,16 @@ int main(int argc, char* args[]){
     const bool *keys = SDL_GetKeyboardState(NULL);
     srand(time(NULL));
 
+    window = SDL_CreateWindow(
+        "Flappy Bird",                  // title
+        640,                               // width
+        940,                               // height
+        SDL_WINDOW_OPENGL                  // flags
+    );
+
+    renderer = SDL_CreateRenderer(window,NULL);
+    textEngine = TTF_CreateRendererTextEngine(renderer);
+
     //framerate stuff
     struct timespec inter = { .tv_sec = 0, .tv_nsec = 16666667};
     struct timespec start;
@@ -246,16 +309,7 @@ int main(int argc, char* args[]){
     *playptr = false;
     Bird* birdptr = newBird();
     Pipes* pipesptr = newPipes(102,50);
-
-    window = SDL_CreateWindow(
-        "Flappy Bird",                  // title
-        640,                               // width
-        940,                               // height
-        SDL_WINDOW_OPENGL                  // flags
-    );
-
-    renderer = SDL_CreateRenderer(window,NULL);
-    textEngine = TTF_CreateRendererTextEngine(renderer);
+    struct Score* scoreptr = newScore(textEngine);
 
     if (window == NULL) {
         SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Could not create window: %s\n", SDL_GetError());
@@ -295,6 +349,7 @@ int main(int argc, char* args[]){
     free(playptr);
     free(playstartptr);
     DestroyPipes(pipesptr);
+    DestroyScore(scoreptr);
 
     SDL_DestroyWindow(window);
     SDL_DestroyRenderer(renderer);
