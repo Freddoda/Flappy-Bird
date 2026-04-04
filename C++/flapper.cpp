@@ -399,7 +399,6 @@ int main(){
     if (font == NULL){
         std::cout<<SDL_GetError();
     }
-    delete base_path;
 
     window = SDL_CreateWindow(
         "Flappy Bird",                  // title
