@@ -47,15 +47,13 @@ struct Score* newScore(TTF_TextEngine* engine){
     strcat(font_path, "Geneva.ttf");
     score->font = TTF_OpenFont(font_path, 60);
     if (score->font == NULL){
-        printf("%d\n",SDL_GetError());
+        printf("%s\n",SDL_GetError());
     }
     free(font_path);
 
     score->highscoreF = malloc(100*sizeof(char));
     strcpy(score->highscoreF, base_path);
     strcat(score->highscoreF, "Score.txt");
-
-    free(base_path);
 
     char highscore[50];
     FILE* hsFileptr = fopen(score->highscoreF,"r");
@@ -90,7 +88,7 @@ void scoring(struct Score* score, Bird* bird, Pipes* pipes){
         char scoreString[16];
         snprintf(scoreString, sizeof(scoreString), "%d", score->score);
         FILE* file = fopen(score->highscoreF,"w");
-        fprintf(file, scoreString);
+        fprintf(file, "%s", scoreString);
         fclose(file);
     }
 }
