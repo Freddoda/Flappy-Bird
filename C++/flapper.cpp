@@ -42,6 +42,19 @@ bool listContains(std::vector<T> &list, T item){
     return contains;
 }
 
+template <typename T>
+int indexof(std::vector<T> &list, T item){
+    int index = 0;
+    while (index<list.size()){
+        if (list[index]==item){
+            return index;
+        } else {
+            index++;
+        }
+    }
+    return -1;
+}
+
 struct Cave{
     int height;
     std::mt19937 generator;
@@ -370,7 +383,7 @@ void draw(SDL_Renderer *renderer, Bird *bird, std::array<Pipes,2> &pipe_arr, Cav
     SDL_RenderPresent(renderer);
 }
 
-int main(){
+int main(int argc, char* argv[]){
     SDL_Window* window;                    // Declare a window pointer
     SDL_Renderer* renderer;
     TTF_TextEngine* textEngine;
@@ -433,7 +446,7 @@ int main(){
                 }
             } else if (event.type == SDL_EVENT_KEY_UP){
                 if (listContains(keys,event.key.key)){
-                    keys.erase(keys.begin()+std::distance(keys.begin(),std::find(keys.begin(),keys.end(),event.key.key)));
+                    keys.erase(keys.begin()+indexof(keys, event.key.key));
                 }
             }
         }

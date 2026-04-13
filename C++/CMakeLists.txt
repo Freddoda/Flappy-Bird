@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.10.0)
 
-project(Flappy_Bird VERSION 0.1.0 LANGUAGES C CXX)
+project(Flappy_Bird LANGUAGES CXX)
 
 add_executable(Flappy_Bird flapper.cpp)
 
