@@ -1,3 +1,5 @@
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 class Pipe{
     constructor(width, height, speed){
         this.width = width;
@@ -9,6 +11,7 @@ class Pipe{
 class Bird{
     constructor(radius){
         this.radius=radius;
+        this.jtimer=0;
     }
 }
 
@@ -19,13 +22,32 @@ class Ground{
 }
 
 class Game {
-    constructor(pWdith, pSpeed, bRad, gHeight){
+    constructor(pWidth, pSpeed, bRad, gHeight){
         this.bird = new Bird(bRad);
         this.ground = new Ground(gHeight);
-        this.Pipes = [new Pipe(0, 0, 0), new Pipe(0, 0, 0)]
+        this.Pipes = [new Pipe(pWidth, 0, pSpeed), new Pipe(pWidth, 0, pSpeed)]
     }
 
-    run(canvas){
+    draw(canvas){
 
+    }
+
+    update(canvas){
+
+    }
+
+    async run(canvas){
+        let playing = false;
+        let startable = false;
+        let milsecWait = 16;
+
+        while (true){
+            let start = Date.now();
+        
+            this.update(canvas);
+            this.draw(canvas);
+
+            await wait(milsecWait-(Date.now()-start));
+        }
     }
 }

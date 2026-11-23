@@ -13,13 +13,13 @@
 </head>
 
 <body>
-    <canvas id="Canvas" width="640" height="940"></canvas>
+    <canvas id="Canvas" width="640" height="940" tabindex="0" autofocus></canvas>
 
     <script src="flappybird.js"></script>
     <script>
         let canvas = document.getElementById("Canvas");
-        let game = new Game();
-        game.run();
+        let game = new Game(0, 0, 0, 0);
+        game.run(canvas);
     </script>
 </body>
 </html>
