@@ -9,9 +9,21 @@ class Pipe{
 }
 
 class Bird{
-    constructor(radius){
+    constructor(radius,gHeight){
         this.radius=radius;
         this.jtimer=0;
+        this.height=(940-gHeight)/2;
+    }
+
+    update(canvas){
+
+    }
+
+    draw(drawing){
+        drawing.fillstyle = 'yellow';
+        drawing.beginPath();
+        drawing.arc(200,this.height,this.radius,0, Math.PI * 2, false);
+        drawing.fill();
     }
 }
 
@@ -25,11 +37,11 @@ class Game {
     constructor(pWidth, pSpeed, bRad, gHeight){
         this.bird = new Bird(bRad);
         this.ground = new Ground(gHeight);
-        this.Pipes = [new Pipe(pWidth, 0, pSpeed), new Pipe(pWidth, 0, pSpeed)]
+        this.Pipes = [new Pipe(pWidth, 0, pSpeed), new Pipe(pWidth, 0, pSpeed)];
     }
 
     draw(canvas){
-
+        this.bird.draw(canvas);
     }
 
     update(canvas){
@@ -40,12 +52,14 @@ class Game {
         let playing = false;
         let startable = false;
         let milsecWait = 16;
+        let drawing = canvas.getContext('2d');
 
         while (true){
             let start = Date.now();
+            drawing.clearRect(0,0,canvas.width,canvas.height);
         
             this.update(canvas);
-            this.draw(canvas);
+            this.draw(drawing);
 
             await wait(milsecWait-(Date.now()-start));
         }
